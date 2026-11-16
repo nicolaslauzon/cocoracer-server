@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.vscode/
+
+# Runtime data: a dev run's --state-dir, and local secrets
+/state/
+/server/state/
+.env
+
+# Local issue notes (docs/agents/issue-tracker.md), not shipped
+.scratch/

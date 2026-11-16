@@ -1,0 +1,241 @@
+/* Replay player, mounted by replay.js. Colours come from the page's own
+   palette (views.py _CSS); the fallbacks repeat it so the player also reads
+   right on a bare page. Dark only, like the rest of the server. */
+.rp {
+  --rp-asphalt: var(--asphalt, #121310);
+  --rp-kerb: var(--kerb, #1a1b17);
+  --rp-line: var(--line, #2c2d27);
+  --rp-ink: var(--ink, #ece8dc);
+  --rp-muted: var(--muted, #8b887c);
+  --rp-bad: var(--bad, #ff6b4a);
+  --rp-display: var(--display, "Arial Narrow", sans-serif);
+  --rp-mono: var(--mono, ui-monospace, Menlo, Consolas, monospace);
+  color: var(--rp-ink);
+  font: 400 13px/1.5 var(--rp-mono);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-areas: "stage panel" "bar bar";
+  gap: 0;
+  border: 1px solid var(--rp-line);
+  background: var(--rp-asphalt);
+}
+.rp * { box-sizing: border-box; }
+.rp.rp-failed { grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "stage"; }
+.rp.rp-failed .rp-stage { aspect-ratio: auto; min-height: 120px; }
+.rp.rp-failed .rp-panel, .rp.rp-failed .rp-bar { display: none; }
+
+/* A tall track (the L) would make the stage taller than the screen, with
+   the controls below it out of sight; cap it, and the canvas letterboxes
+   the track inside. The explicit width keeps a capped stage as wide as its
+   column: a grid item with an aspect ratio is not stretched, and would
+   take its width from the capped height. */
+.rp-stage { grid-area: stage; position: relative; width: 100%; min-width: 0;
+  overflow: hidden; aspect-ratio: 16 / 9;
+  max-height: calc(100vh - 200px); min-height: 240px; }
+.rp-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%;
+  display: block; cursor: pointer; }
+.rp-overlay { position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center; pointer-events: none;
+  font: 800 6rem/1 var(--rp-display); color: var(--rp-ink);
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.9); }
+.rp-overlay[hidden] { display: none; }
+.rp-message { position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; padding: 16px; text-align: center;
+  color: var(--rp-muted); }
+.rp-message.rp-error { color: var(--rp-bad); }
+.rp-message[hidden] { display: none; }
+
+.rp-panel { grid-area: panel; border-left: 1px solid var(--rp-line);
+  background: var(--rp-kerb); padding: 10px 0; min-width: 0; }
+.rp-panel h3 { margin: 0 12px 6px; font: 800 1.1rem/1 var(--rp-display);
+  text-transform: uppercase; letter-spacing: 0.02em; }
+.rp-order { list-style: none; margin: 0; padding: 0; }
+.rp-row { display: grid; grid-template-columns: 2.4ch 10px minmax(0, 1fr) auto;
+  grid-template-areas: "pos dot name status" ". . meta meta";
+  column-gap: 8px; align-items: center; padding: 6px 12px;
+  border-top: 1px solid var(--rp-line); cursor: pointer; }
+.rp-row:hover { background: var(--rp-line); }
+.rp-row.rp-on { background: var(--rp-ink); color: var(--rp-asphalt); }
+.rp-row.rp-on .rp-meta { color: var(--rp-asphalt); }
+.rp-pos { grid-area: pos; font: 800 1.2rem/1 var(--rp-display);
+  text-align: center; }
+.rp-dot { grid-area: dot; width: 10px; height: 10px; }
+.rp-name { grid-area: name; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-weight: 700; }
+.rp-status { grid-area: status; font-size: 0.78em; color: var(--rp-muted);
+  white-space: nowrap; }
+.rp-row.rp-on .rp-status { color: var(--rp-asphalt); }
+.rp-row:not(.rp-on).rp-paused .rp-status,
+.rp-row:not(.rp-on).rp-ghost .rp-status { color: var(--rp-ink); }
+.rp-row.rp-dnf .rp-status { color: var(--rp-bad); }
+.rp-meta { grid-area: meta; color: var(--rp-muted); font-size: 0.85em;
+  font-variant-numeric: tabular-nums; }
+.rp-row.rp-dnf .rp-name { text-decoration: line-through; opacity: 0.6; }
+.rp-row.rp-dnf .rp-dot { opacity: 0.35; }
+
+.rp-bar { grid-area: bar; display: flex; align-items: center;
+  gap: 12px; padding: 10px 12px; border-top: 1px solid var(--rp-line); }
+.rp-bar button { font: inherit; padding: 6px 12px; border-radius: 0;
+  border: 1px solid var(--rp-line); background: var(--rp-kerb);
+  color: var(--rp-ink); cursor: pointer; }
+.rp-bar button:hover:not(:disabled) { border-color: var(--rp-ink); }
+.rp-bar button:disabled { color: var(--rp-muted); cursor: default;
+  opacity: 0.5; }
+.rp-bar button:focus-visible { outline: 2px solid var(--rp-ink);
+  outline-offset: 2px; }
+.rp-bar button.rp-play { min-width: 11ch; background: var(--rp-ink);
+  border-color: var(--rp-ink); color: var(--rp-asphalt); font-weight: 700; }
+
+/* Progress bar: a tall hit area around a thin track. */
+.rp-progress { flex: 1 1 auto; min-width: 80px; height: 24px;
+  position: relative; cursor: pointer; touch-action: none; }
+.rp-progress::before, .rp-progress-fill { content: ""; position: absolute;
+  left: 0; top: 50%; height: 6px; margin-top: -3px; }
+.rp-progress::before { right: 0; background: var(--rp-line); }
+.rp-progress-fill { width: 0; background: var(--rp-ink); }
+.rp-progress-fill::after { content: ""; position: absolute; right: -6px;
+  top: 50%; width: 12px; height: 12px; margin-top: -6px;
+  background: var(--rp-ink); }
+.rp-progress:hover::before, .rp-progress.rp-dragging::before {
+  background: var(--rp-muted); }
+
+.rp-clock { font-variant-numeric: tabular-nums; color: var(--rp-muted);
+  white-space: nowrap; }
+.rp-clock strong { color: var(--rp-ink); font-weight: 700; }
+
+.rp-speed { display: inline-flex; align-items: stretch; }
+.rp-speed button { width: 2.6em; padding: 6px 0; font-weight: 700; }
+.rp-speed-value { min-width: 6ch; display: flex; align-items: center;
+  justify-content: center; border-top: 1px solid var(--rp-line);
+  border-bottom: 1px solid var(--rp-line); font-weight: 700;
+  font-variant-numeric: tabular-nums; }
+
+@media (max-width: 700px) {
+  .rp { grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "stage" "bar" "panel"; }
+  .rp-panel { border-left: none; border-top: 1px solid var(--rp-line); }
+  .rp-overlay { font-size: 4rem; }
+  .rp-bar { flex-wrap: wrap; }
+  .rp-progress { order: -1; flex-basis: 100%; }
+}
+
+/* Live mode (ReplayPlayer.live): an F1-style tower on the left of the
+   track, no controls. */
+.rp.rp-live { grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-areas: "panel stage"; }
+.rp-live .rp-stage canvas { cursor: default; }
+/* No controls under the live stage, so it may be taller. */
+.rp-live .rp-stage { max-height: calc(100vh - 140px); min-height: 280px; }
+/* On the live tab, which sizes the player to the window (views.py), the
+   stage fills the height it is given instead of keeping 16:9. */
+@media (min-width: 701px) and (min-height: 500px) {
+  .tab > .rp-live { grid-template-rows: minmax(0, 1fr); }
+  .tab > .rp-live:not(.rp-failed) .rp-stage { aspect-ratio: auto; height: 100%;
+    max-height: none; min-height: 240px; } }
+.rp-live.rp-idle .rp-tower { display: none; }
+.rp-live.rp-idle { grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "stage"; }
+.rp-live .rp-message { font: 800 1.4rem/1.2 var(--rp-display);
+  text-transform: uppercase; letter-spacing: 0.02em; }
+.rp-tower { border-left: none; border-right: 1px solid var(--rp-line);
+  padding: 0; overflow: hidden auto; }
+.rp-trow { display: grid;
+  grid-template-columns: 2.6ch 4px minmax(0, 1fr) auto auto;
+  column-gap: 8px; align-items: center; padding: 5px 10px 5px 6px;
+  border-bottom: 1px solid var(--rp-line);
+  font-variant-numeric: tabular-nums; }
+.rp-trow > * { grid-area: auto; }
+.rp-trow .rp-pos { font: 800 1.1rem/1 var(--rp-display); text-align: right; }
+.rp-stripe { align-self: stretch; min-height: 18px; }
+.rp-trow .rp-name { font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.02em; }
+.rp-tag { font-size: 0.72em; font-weight: 700; color: var(--rp-asphalt);
+  background: var(--rp-muted); padding: 0 4px; }
+.rp-tag:empty { display: none; }
+.rp-gap { color: var(--rp-muted); text-align: right; white-space: nowrap;
+  min-width: 7ch; }
+.rp-trow:first-child .rp-gap, .rp-trow.rp-finished .rp-gap {
+  color: var(--rp-ink); }
+.rp-trow.rp-paused .rp-tag { background: var(--rp-ink); }
+.rp-trow.rp-ghost .rp-name, .rp-trow.rp-ghost .rp-stripe { opacity: 0.5; }
+.rp-trow.rp-dnf .rp-tag { background: var(--rp-bad); }
+.rp-trow.rp-dnf .rp-name { text-decoration: line-through; opacity: 0.6; }
+.rp-trow.rp-dnf .rp-stripe { opacity: 0.35; }
+/* A circled car's row, as in the replay's standings. */
+.rp-trow { cursor: pointer; }
+.rp-trow:hover { background: var(--rp-line); }
+.rp-trow.rp-on { background: var(--rp-ink); color: var(--rp-asphalt); }
+.rp-trow.rp-on .rp-gap { color: var(--rp-asphalt); }
+
+@media (max-width: 700px) {
+  .rp.rp-live { grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "stage" "panel"; }
+  .rp-tower { border-right: none; border-top: 1px solid var(--rp-line); }
+}
+
+/* The start lights over the live stage (ReplayPlayer.live): three red lamps
+   that come on through the countdown and go out at the release. */
+.rp-lights { position: absolute; top: 16px; left: 50%;
+  transform: translateX(-50%); display: grid; justify-items: center;
+  gap: 8px; pointer-events: none; }
+.rp-lights[hidden] { display: none; }
+.rp-gantry { display: flex; gap: 10px; padding: 10px 14px;
+  background: #050505; border: 1px solid var(--rp-line);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.9); }
+.rp-lamp { width: 34px; height: 34px; border-radius: 50%;
+  background: #2a0b07; border: 2px solid #3a3a36; }
+.rp-lamp.rp-on { background: #ff2a12; border-color: #ff6b4a;
+  box-shadow: 0 0 18px 4px rgba(255, 42, 18, 0.7); }
+.rp-lights-note { font: 800 1.1rem/1.2 var(--rp-display);
+  text-transform: uppercase; letter-spacing: 0.02em; color: var(--rp-ink);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9); }
+.rp-lights-note[hidden] { display: none; }
+@media (max-width: 700px) {
+  .rp-lamp { width: 22px; height: 22px; }
+  .rp-gantry { gap: 6px; padding: 6px 10px; }
+}
+
+/* A car's log (mount's `log` option), its team's own prints up to the
+   replay's time, always in the stage's top right corner: the L track
+   leaves it empty. One row per line: a long one is cut, its full text on
+   hover, unless the head's checkbox wraps them. */
+.rp.rp-failed .rp-log { display: none; }
+.rp-log { position: absolute; top: 12px; right: 12px; z-index: 1;
+  width: min(440px, 40%); min-width: min(280px, calc(100% - 24px));
+  height: min(380px, 40%);
+  display: flex; flex-direction: column;
+  border: 1px solid var(--rp-line); background: rgba(18, 19, 16, 0.88); }
+.rp-log-head { display: flex; flex-wrap: wrap; align-items: center;
+  gap: 6px 10px; padding: 8px 12px; }
+.rp-log-wrap-toggle { display: flex; align-items: center; gap: 6px;
+  margin-left: auto; color: var(--rp-muted); font-size: 12px;
+  cursor: pointer; user-select: none; }
+.rp-log-wrap-toggle input { margin: 0; accent-color: var(--rp-ink);
+  cursor: pointer; }
+.rp-log-head h3 { margin: 0; font: 800 1.1rem/1 var(--rp-display);
+  text-transform: uppercase; letter-spacing: 0.02em; }
+.rp-log-note { flex: 1 1 auto; color: var(--rp-bad); font-size: 0.85em; }
+.rp-log-download { font: inherit; font-size: 12px; padding: 3px 8px;
+  border-radius: 0; border: 1px solid var(--rp-line);
+  background: var(--rp-kerb); color: var(--rp-ink); cursor: pointer; }
+.rp-log-download:hover:not(:disabled) { border-color: var(--rp-ink); }
+.rp-log-download:disabled { color: var(--rp-muted); cursor: default;
+  opacity: 0.5; }
+.rp-log-lines { list-style: none; margin: 0; padding: 0 0 6px;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  border-top: 1px solid var(--rp-line); font-size: 12px;
+  scrollbar-color: var(--rp-line) transparent; }
+.rp-log-lines[hidden] { display: none; }
+.rp-log-line { display: grid; grid-template-columns: 7ch minmax(0, 1fr);
+  column-gap: 12px; padding: 1px 12px; cursor: pointer; }
+.rp-log-line[hidden] { display: none; }
+.rp-log-line:hover { background: var(--rp-line); }
+.rp-log-line.rp-log-now { background: var(--rp-line);
+  box-shadow: inset 3px 0 0 var(--rp-ink); }
+.rp-log-t { color: var(--rp-muted); font-variant-numeric: tabular-nums; }
+.rp-log-text { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.rp-log-wrapped .rp-log-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.rp-log-empty { margin: 0; padding: 8px 12px 12px; color: var(--rp-muted); }
+.rp-log-empty[hidden] { display: none; }
+.rp-log-empty.rp-log-error { color: var(--rp-bad); }

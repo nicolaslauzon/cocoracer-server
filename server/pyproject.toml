@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cocoracer-server"
+version = "0.1.0"
+description = "Race server for programming competitions, built on the cocoracer simulator."
+license = "MIT"
+# No license-files: the LICENSE is at the repo root, and setuptools refuses
+# a pattern with "..", so this package cannot reference it.
+requires-python = ">=3.12"
+dependencies = [
+    "cocoracer",
+    "fastapi>=0.110",
+    # ctypes bindings to the system's libseccomp, for each car's filter
+    # (cocoracer_server.sandbox); the deploy checks they work.
+    "pyseccomp>=0.1.2",
+    "python-multipart>=0.0.9",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27",
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+cocoracer-server = "cocoracer_server.__main__:main"
+
+[tool.uv.sources]
+cocoracer = { path = "../cocoracer", editable = true }
+
+[tool.setuptools.packages.find]
+include = ["cocoracer_server*"]
+
+[tool.setuptools.package-data]
+cocoracer_server = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+check_untyped_defs = true
+
+# cocoracer is fully typed but ships no py.typed marker, so mypy cannot see
+# its annotations from here.
+[[tool.mypy.overrides]]
+module = "cocoracer.*"
+ignore_missing_imports = true
+
+# pyseccomp is a single untyped module.
+[[tool.mypy.overrides]]
+module = "pyseccomp"
+ignore_missing_imports = true

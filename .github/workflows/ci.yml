@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  server:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra dev --python 3.12
+      - run: .venv/bin/ruff format --check .
+      - run: .venv/bin/ruff check .
+      - run: .venv/bin/mypy cocoracer_server tests
+      # The suite attacks the car sandbox for real; setsid keeps it in its
+      # own process group (see AGENTS.md).
+      - run: PYTHONPATH= setsid -w .venv/bin/python -m pytest

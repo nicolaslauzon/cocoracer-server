@@ -1,0 +1,3 @@
+[submodule "cocoracer"]
+	path = cocoracer
+	url = https://github.com/nicolaslauzon/cocoracer.git
