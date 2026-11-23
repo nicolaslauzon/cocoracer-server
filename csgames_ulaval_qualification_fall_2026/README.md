@@ -97,10 +97,7 @@ pushes.
 Each team folder has every version the team pushed (`v1.py`, `v2.py`, ...) and
 `latest.py`, the last one. [`index.tsv`](index.tsv) lists every push with its
 time and the description the team gave. The code is published as the teams
-wrote it, unused code and comments included, and the teams are its authors
-([MIT](LICENSE)). `number1` links the
-[F1TENTH course kit](https://f1tenth-coursekit.readthedocs.io/) in its
-comments as a source for part of its approach.
+wrote it, unused code and comments included, and the teams are its authors ([MIT](LICENSE)).
 
 Run one with the [start kit](../start_kit/) and the simulator in
 [`cocoracer/`](../cocoracer/).
