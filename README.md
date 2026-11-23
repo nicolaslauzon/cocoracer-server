@@ -25,7 +25,7 @@ watches the races live in the browser.
 | `cocoracer/` | Simulator, a git submodule with its own README |
 | `server/` | Event server, its tests and `deploy.sh` |
 | `start_kit/` | What teams receive |
-| `team_controllers/` | The controllers the teams wrote in the competition |
+| `csgames_ulaval_qualification_fall_2026/` | The competition's leaderboards, score progression and the teams' controllers |
 | `docs/` | Deployment guide and design decisions in `docs/adr/` |
 
 ## Run it locally

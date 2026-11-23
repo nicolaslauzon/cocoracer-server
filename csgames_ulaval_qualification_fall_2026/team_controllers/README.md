@@ -8,8 +8,8 @@ Each folder has every version the team pushed (`v1.py`, `v2.py`, …) and
 `latest.py`, the last one. `index.tsv` lists every push with its time and the
 description the team gave.
 
-Run one with the [start kit](../start_kit/) and the simulator in
-[`cocoracer/`](../cocoracer/).
+Run one with the [start kit](../../start_kit/) and the simulator in
+[`cocoracer/`](../../cocoracer/).
 
 | Folder | Versions |
 | --- | --- |
